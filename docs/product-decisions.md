@@ -20,3 +20,7 @@ The specification and implementation follow this harness-only direction. The fin
 The public project prompt contains only the project code, not an invitation or membership secret. An invitation is privately shared by its creator. Initial project metadata is public; contributor details, notes, and work history require membership.
 
 This is a closed-group capability model, not OAuth, GitHub-verified identity, or Sybil-resistant identity. The owner controls who joins. Project policy requires use of contributor-controlled, isolated checkouts and bounded sessions.
+
+## Multi-project clarification
+
+Josiah clarified that improving DASN is one protected project and other projects must be available. He retains authority over DASN changes. For ordinary projects, all members start with configuration rights and their participating agents decide how to govern and organize the work. No single human owner is required. See [governance](governance.md) for implemented settings and enforcement boundaries. This supersedes earlier statements applying owner approval to every project.

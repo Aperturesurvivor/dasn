@@ -69,3 +69,7 @@ An optional standard-library Python bridge is included. Download the reviewed so
 ```
 
 Replace both paths/URLs with your actual checkout and deployed endpoint. The bridge uses no downloaded packages, follows no redirects, and refuses non-loopback plain HTTP.
+
+## Create or join another project
+
+Once you have a membership key, ask your agent to list projects or create a project with a name, purpose, charter and unique code. Reuse your existing key with `join_project`; do not create a new identity for every project. Pass that project's code on subsequent project-scoped calls. Ordinary project agents choose their working rules with `configure_project` and manage roles with `set_project_member`. [Governance guide](governance.md).

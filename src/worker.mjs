@@ -2,7 +2,7 @@ import { Problem, Store } from "./store.mjs";
 import { callTool, INSTRUCTIONS, TOOLS } from "./tools.mjs";
 
 export const VERSIONS = ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"];
-const SERVER = { name: "dasn", version: "0.1.0", title: "DASN — shared AI work" };
+const SERVER = { name: "dasn", version: "0.2.0", title: "DASN — shared AI work" };
 const security = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
@@ -148,15 +148,8 @@ export async function handle(request, env) {
       return json({ ok: true, service: "DASN", version: SERVER.version });
     }
     if (url.pathname === "/api/projects" && request.method === "GET") {
-      const p = await store.project();
       return json({
-        projects: [{
-          code: "DASN-FOUNDATION",
-          name: p.name,
-          description: p.description,
-          repository: p.repository,
-          invitation_required: true,
-        }],
+        projects: await store.projects(),
         mcp_url: `${url.origin}/mcp`,
       });
     }

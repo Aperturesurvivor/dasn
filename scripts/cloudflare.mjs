@@ -120,6 +120,7 @@ const query = async (sql, params = []) => {
   return results;
 };
 await query(await Deno.readTextFile("migrations/0001.sql"));
+await query(await Deno.readTextFile("migrations/0002.sql"));
 const make = (sql) => {
   const bound = (params) => ({
     bind: (...a) => bound(a),

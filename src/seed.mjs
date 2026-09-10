@@ -50,7 +50,7 @@ export const STARTERS = [
 export async function seed(db, now = Date.now(), saveBootstrap) {
   const project = await db.prepare("SELECT id FROM projects WHERE id=?").bind("dasn").first();
   if (project) return null;
-  const actor = uid(), token = secret();
+  const actor = uid(), token = secret(), invitationId = uid();
   if (saveBootstrap) await saveBootstrap(token);
   await db.batch([
     db.prepare("INSERT INTO principals(id,name,role,created_at,disabled) VALUES (?,?,?,?,?)").bind(
@@ -72,10 +72,16 @@ export async function seed(db, now = Date.now(), saveBootstrap) {
     ),
     db.prepare("INSERT INTO invites(hash,id,role,created_at,expires_at) VALUES (?,?,?,?,?)").bind(
       await hash(token),
-      uid(),
+      invitationId,
       "owner",
       now,
       now + 7 * 86400000,
+    ),
+    db.prepare(
+      "INSERT INTO project_settings(project_id,code,protected,governance,joining,task_approval,acceptance) VALUES ('dasn','DASN-FOUNDATION',1,'maintainers','invitation','maintainers','maintainers')",
+    ),
+    db.prepare("INSERT INTO project_invites(invite_id,project_id) VALUES (?,'dasn')").bind(
+      invitationId,
     ),
     ...STARTERS.map((t, i) =>
       db.prepare(

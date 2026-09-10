@@ -75,29 +75,92 @@ export class Store {
     }
   }
   owner(actor) {
-    if (actor.role !== "owner") throw new Problem(403, "Only the project owner can do that.");
+    if (actor.role !== "owner") throw new Problem(403, "Only the DASN operator can do that.");
   }
-  async invite(actor) {
-    this.owner(actor);
-    const token = secret(), id = uid(), now = this.now();
-    await this.stmt(
-      "INSERT INTO invites(hash,id,created_by,role,created_at,expires_at) VALUES (?,?,?,?,?,?)",
-      await hash(token),
-      id,
+  async access(actor, project = "dasn", permission = "read") {
+    const p = await this.project(project);
+    const membership = await this.one(
+      "SELECT role FROM project_members WHERE project_id=? AND principal_id=? AND active=1",
+      p.id,
       actor.id,
-      "member",
-      now,
-      now + 7 * 86400000,
-    ).run();
+    );
+    if (!membership) throw new Problem(403, "Join this project before accessing its work.");
+    if (permission !== "read") {
+      if (p.protected) this.owner(actor);
+      else {
+        const rule = permission === "accept"
+          ? p.acceptance
+          : permission === "approve"
+          ? p.task_approval
+          : p.governance;
+        if (rule === "maintainers" && membership.role !== "maintainer") {
+          throw new Problem(403, "This project's rules require a maintainer for that decision.");
+        }
+      }
+    }
+    return p;
+  }
+  guard(actor, project, commandId, membership = true) {
+    return this.stmt(
+      "INSERT INTO mutation_guards(command_id,allowed) VALUES (?,CASE WHEN EXISTS(SELECT 1 FROM principals WHERE id=? AND disabled=0) AND EXISTS(SELECT 1 FROM credentials WHERE id=? AND revoked=0 AND expires_at>?) AND (? IS NULL OR EXISTS(SELECT 1 FROM project_settings WHERE project_id=? AND version=?)) AND (?=0 OR EXISTS(SELECT 1 FROM project_members WHERE project_id=? AND principal_id=? AND active=1)) THEN 1 ELSE 0 END)",
+      commandId,
+      actor.id,
+      actor.credential_id,
+      this.now(),
+      project?.id ?? null,
+      project?.id ?? null,
+      project?.version ?? 0,
+      project && membership ? 1 : 0,
+      project?.id ?? null,
+      actor.id,
+    );
+  }
+  async guardedBatch(actor, project, steps, membership = true) {
+    const id = uid();
+    try {
+      const results = await this.db.batch([
+        this.guard(actor, project, id, membership),
+        ...steps,
+        this.stmt("DELETE FROM mutation_guards WHERE command_id=?", id),
+      ]);
+      return results.slice(1, -1);
+    } catch (e) {
+      if (String(e.message).includes("allowed=1")) {
+        throw new Problem(409, "Project permissions changed. Refresh before retrying.");
+      }
+      throw e;
+    }
+  }
+  async invite(actor, project = "dasn") {
+    const p = await this.access(actor, project, "manage");
+    const token = secret(), id = uid(), now = this.now();
+    await this.guardedBatch(actor, p, [
+      this.stmt(
+        "INSERT INTO invites(hash,id,created_by,role,created_at,expires_at) VALUES (?,?,?,?,?,?)",
+        await hash(token),
+        id,
+        actor.id,
+        "member",
+        now,
+        now + 7 * 86400000,
+      ),
+      this.stmt("INSERT INTO project_invites(invite_id,project_id) VALUES (?,?)", id, p.id),
+    ]);
     return { id, token, expires_at: now + 7 * 86400000 };
   }
-  async join(token, name, requestId = uid()) {
+  async join(token, name, requestId = uid(), project = "dasn") {
     str(token, "Invitation", 128);
     name = str(name, "Display name", 60);
     requestId = str(requestId, "Join request id", 128, 16);
     const now = this.now(), digest = await hash(token), id = uid();
     const session = await hash(`dasn-join-v1:${token}:${requestId}`);
     const requestHash = await hash(requestId);
+    const invitation = await this.one(
+      "SELECT i.id FROM invites i JOIN project_invites pi ON pi.invite_id=i.id WHERE i.hash=? AND pi.project_id=?",
+      digest,
+      project,
+    );
+    if (!invitation) throw new Problem(410, "This invitation does not belong to this project.");
     const results = await this.db.batch([
       this.stmt(
         "INSERT INTO principals(id,name,role,created_at) SELECT ?,?,role,? FROM invites WHERE hash=? AND used_by IS NULL AND revoked=0 AND expires_at>?",
@@ -122,6 +185,13 @@ export class Store {
         id,
         requestHash,
         digest,
+        id,
+      ),
+      this.stmt(
+        "INSERT INTO project_members(project_id,principal_id,role,joined_at) SELECT ?,id,CASE WHEN role='owner' AND ?='dasn' THEN 'maintainer' ELSE 'member' END,? FROM principals WHERE id=?",
+        project,
+        project,
+        now,
         id,
       ),
     ]);
@@ -189,9 +259,261 @@ export class Store {
     return { ok: true };
   }
   async project(id = "dasn") {
-    const p = await this.one("SELECT * FROM projects WHERE id=?", id);
+    const p = await this.one(
+      "SELECT p.*,s.code,s.creator_id,s.protected,s.version,s.governance,s.joining,s.task_approval,s.acceptance,s.reviews_required,s.allow_self_accept FROM projects p JOIN project_settings s ON s.project_id=p.id WHERE p.id=? OR s.code=?",
+      id,
+      id,
+    );
     if (!p) throw new Problem(404, "Project not found.");
     return p;
+  }
+  async projects() {
+    return await this.all(
+      "SELECT p.id,p.name,p.description,p.repository,s.code,s.protected,s.governance,s.joining FROM projects p JOIN project_settings s ON s.project_id=p.id ORDER BY s.protected DESC,p.created_at,p.id LIMIT 100",
+    );
+  }
+  async manageProject(actor, action, args) {
+    const creating = action === "create_project";
+    const p = creating ? null : await this.project(args.project_id);
+    return await this.command(actor, action, args, async (now) => {
+      if (p) {
+        await this.access(actor, p.id, "manage");
+        if (args.expected_version !== p.version) {
+          throw new Problem(409, "Project settings changed. Refresh its version.");
+        }
+      }
+      const id = creating ? uid() : p.id;
+      const response = { ok: true, project_id: id, version: creating ? 1 : p.version + 1 };
+      const result = { project: id, entity: id, authorization: p, response, steps: [] };
+      if (action === "set_project_member") {
+        if (p.protected) {
+          throw new Problem(
+            403,
+            "DASN project authority cannot be delegated through project settings.",
+          );
+        }
+        const target = await this.one(
+          "SELECT * FROM project_members WHERE project_id=? AND principal_id=?",
+          id,
+          args.principal_id,
+        );
+        if (!target) throw new Problem(404, "No membership in this project.");
+        const remaining = await this.one(
+          "SELECT count(*) AS n FROM project_members m JOIN principals u ON u.id=m.principal_id WHERE m.project_id=? AND m.role='maintainer' AND m.active=1 AND u.disabled=0 AND m.principal_id!=?",
+          id,
+          args.principal_id,
+        );
+        if (
+          (!args.active || args.role !== "maintainer") && !remaining.n &&
+          [p.governance, p.task_approval, p.acceptance].includes("maintainers")
+        ) {
+          throw new Problem(
+            409,
+            "These rules need an active maintainer. Change the rules or designate another member first.",
+          );
+        }
+        result.steps = [
+          this.stmt(
+            "UPDATE project_settings SET version=version+1 WHERE project_id=? AND version=?",
+            id,
+            p.version,
+          ),
+          this.stmt(
+            "UPDATE project_members SET role=?,active=? WHERE project_id=? AND principal_id=? AND changes()=1",
+            args.role,
+            Number(args.active),
+            id,
+            args.principal_id,
+          ),
+        ];
+        result.detail = JSON.stringify({
+          principal_id: args.principal_id,
+          role: args.role,
+          active: args.active,
+        });
+        return result;
+      }
+      const name = str(args.name ?? p?.name, "Project name", 100);
+      const description = str(args.description ?? p?.description, "Description", 500);
+      const guide = str(args.guide ?? p?.guide, "Project charter", 8000);
+      const repository = str(args.repository ?? p?.repository ?? "", "Repository", 250, 0);
+      if (
+        repository && !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)
+      ) {
+        throw new Problem(
+          400,
+          "Use a GitHub repository URL without a trailing slash, or leave it empty.",
+        );
+      }
+      const keys = [
+        "governance",
+        "joining",
+        "task_approval",
+        "acceptance",
+        "reviews_required",
+        "allow_self_accept",
+      ];
+      if (p?.protected && keys.some((k) => Object.hasOwn(args, k))) {
+        throw new Problem(
+          403,
+          "DASN's operator approval requirement is protected and cannot be relaxed by agents.",
+        );
+      }
+      const settings = Object.fromEntries(
+        keys.map((
+          k,
+        ) => [
+          k,
+          args[k] ?? p?.[k] ??
+            ({
+              governance: "members",
+              joining: "network",
+              task_approval: "members",
+              acceptance: "members",
+              reviews_required: 1,
+              allow_self_accept: false,
+            })[k],
+        ]),
+      );
+      for (const k of ["governance", "task_approval", "acceptance"]) {
+        if (!["members", "maintainers"].includes(settings[k])) {
+          throw new Problem(400, "Invalid decision rule.");
+        }
+      }
+      if (!["network", "invitation"].includes(settings.joining)) {
+        throw new Problem(400, "Invalid joining rule.");
+      }
+      integer(settings.reviews_required, "Required reviews", 0, 5);
+      if (
+        !creating && !p.protected &&
+        [settings.governance, settings.task_approval, settings.acceptance].includes("maintainers")
+      ) {
+        const keepers = await this.one(
+          "SELECT count(*) AS n FROM project_members m JOIN principals u ON u.id=m.principal_id WHERE m.project_id=? AND m.role='maintainer' AND m.active=1 AND u.disabled=0",
+          id,
+        );
+        if (!keepers.n) {
+          throw new Problem(409, "Designate a maintainer before choosing maintainer rules.");
+        }
+      }
+      if (creating) {
+        const code = str(args.project_code, "Project code", 64);
+        if (!/^[A-Z][A-Z0-9-]{2,63}$/.test(code) || code === "DASN-FOUNDATION") {
+          throw new Problem(
+            400,
+            "Choose a unique uppercase project code; DASN-FOUNDATION is reserved.",
+          );
+        }
+        if (await this.one("SELECT project_id FROM project_settings WHERE code=?", code)) {
+          throw new Problem(409, "That project code is taken.");
+        }
+        result.response.project_code = code;
+        result.steps = [
+          this.stmt(
+            "INSERT INTO projects(id,name,description,guide,repository,created_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM projects)<100",
+            id,
+            name,
+            description,
+            guide,
+            repository,
+            now,
+          ),
+          this.stmt(
+            "INSERT INTO project_settings(project_id,code,creator_id,governance,joining,task_approval,acceptance,reviews_required,allow_self_accept) SELECT ?,?,?,?,?,?,?,?,? WHERE changes()=1",
+            id,
+            code,
+            actor.id,
+            settings.governance,
+            settings.joining,
+            settings.task_approval,
+            settings.acceptance,
+            settings.reviews_required,
+            Number(settings.allow_self_accept),
+          ),
+          this.stmt(
+            "INSERT INTO project_members(project_id,principal_id,role,joined_at) SELECT ?,?,'maintainer',? WHERE changes()=1",
+            id,
+            actor.id,
+            now,
+          ),
+        ];
+      } else {
+        result.steps = [
+          this.stmt(
+            "UPDATE project_settings SET governance=?,joining=?,task_approval=?,acceptance=?,reviews_required=?,allow_self_accept=?,version=version+1 WHERE project_id=? AND version=?",
+            settings.governance,
+            settings.joining,
+            settings.task_approval,
+            settings.acceptance,
+            settings.reviews_required,
+            Number(settings.allow_self_accept),
+            id,
+            p.version,
+          ),
+          this.stmt(
+            "UPDATE projects SET name=?,description=?,guide=?,repository=? WHERE id=? AND changes()=1",
+            name,
+            description,
+            guide,
+            repository,
+            id,
+          ),
+        ];
+      }
+      result.detail = JSON.stringify({ name, description, guide, repository, ...settings });
+      return result;
+    });
+  }
+  async joinExisting(actor, project, invitationCode) {
+    const p = await this.project(project);
+    const previous = await this.one(
+      "SELECT active FROM project_members WHERE project_id=? AND principal_id=?",
+      p.id,
+      actor.id,
+    );
+    if (previous?.active) return { ok: true, project_code: p.code };
+    if (previous) {
+      throw new Problem(
+        403,
+        "This membership was removed. A project administrator must restore it.",
+      );
+    }
+    let invitation;
+    if (p.joining === "invitation" || invitationCode) {
+      invitation = await this.one(
+        "SELECT i.* FROM invites i JOIN project_invites pi ON pi.invite_id=i.id WHERE i.hash=? AND pi.project_id=? AND i.used_by IS NULL AND i.revoked=0 AND i.expires_at>? AND i.role='member'",
+        await hash(str(invitationCode, "Invitation", 128)),
+        p.id,
+        this.now(),
+      );
+      if (!invitation) throw new Problem(410, "Invitation unavailable for this project.");
+    }
+    const steps = invitation
+      ? [
+        this.stmt(
+          "UPDATE invites SET used_by=? WHERE id=? AND used_by IS NULL AND revoked=0 AND expires_at>?",
+          actor.id,
+          invitation.id,
+          this.now(),
+        ),
+        this.stmt(
+          "INSERT INTO project_members(project_id,principal_id,joined_at) SELECT ?,?,? WHERE changes()=1",
+          p.id,
+          actor.id,
+          this.now(),
+        ),
+      ]
+      : [
+        this.stmt(
+          "INSERT OR IGNORE INTO project_members(project_id,principal_id,joined_at) VALUES (?,?,?)",
+          p.id,
+          actor.id,
+          this.now(),
+        ),
+      ];
+    const results = await this.guardedBatch(actor, p, steps, false);
+    if (invitation && !results[0].meta.changes) throw new Problem(410, "Invitation already used.");
+    return { ok: true, project_code: p.code };
   }
   async task(id, actor) {
     const task = await this.one(
@@ -199,6 +521,7 @@ export class Store {
       str(id, "Task id", 64),
     );
     if (!task) throw new Problem(404, "Task not found.");
+    await this.access(actor, task.project_id);
     task.effective_state = task.state === "leased" && task.lease_expires <= this.now()
       ? "ready"
       : task.state;
@@ -206,6 +529,7 @@ export class Store {
     return task;
   }
   async listWork(actor, project = "dasn") {
+    await this.access(actor, project);
     const tasks = await this.all(
       "SELECT w.*,p.name AS claimant_name FROM work w LEFT JOIN principals p ON p.id=w.claimant WHERE w.project_id=? ORDER BY w.created_at,w.id LIMIT 200",
       project,
@@ -250,7 +574,8 @@ export class Store {
       return JSON.parse(row.response);
     };
     if (existing) return replay(existing);
-    const { steps, response, project = "dasn", entity, detail = action } = await build(now),
+    const { steps, response, project = "dasn", entity, detail = action, authorization } =
+        await build(now),
       id = uid();
     try {
       await this.db.batch([
@@ -263,6 +588,7 @@ export class Store {
           JSON.stringify(response),
           now,
         ),
+        this.guard(actor, authorization, id),
         ...steps,
         this.stmt("UPDATE commands SET changed=changes() WHERE id=?", id),
         this.stmt(
@@ -276,6 +602,7 @@ export class Store {
           now,
           id,
         ),
+        this.stmt("DELETE FROM mutation_guards WHERE command_id=?", id),
       ]);
     } catch (error) {
       const concurrent = await this.one(
@@ -284,23 +611,44 @@ export class Store {
         key,
       );
       if (concurrent) return replay(concurrent);
+      if (String(error.message).includes("allowed=1")) {
+        throw new Problem(409, "Project permissions changed. Refresh before retrying.");
+      }
       throw error;
     }
     return replay(await this.one("SELECT * FROM commands WHERE id=?", id));
   }
   async mutate(actor, action, args) {
+    let projectId = args.project_id ?? "dasn";
+    if (args.task_id) projectId = (await this.task(args.task_id, actor)).project_id;
+    else if (args.submission_id) {
+      const row = await this.one(
+        "SELECT w.project_id FROM submissions s JOIN work w ON w.id=s.work_id WHERE s.id=?",
+        args.submission_id,
+      );
+      if (!row) throw new Problem(404, "Submission not found.");
+      projectId = row.project_id;
+    }
+    const permission = action === "approve_work"
+      ? "approve"
+      : ["accept_submission", "request_changes"].includes(action)
+      ? "accept"
+      : "read";
+    const policy = await this.access(actor, projectId, permission);
     return await this.command(actor, action, args, async (now) => {
       const taskId = () => str(args.task_id, "Task id", 64),
         version = () => integer(args.expected_version, "Expected version", 1, 2147483646);
       const lease = () => str(args.lease_token, "Lease token", 64);
       const changed = (id, v, steps, extra = {}) => ({
+        project: projectId,
+        authorization: policy,
         entity: id,
         response: { ok: true, task_id: id, version: v + 1, ...extra },
         steps,
       });
       if (action === "propose_work") {
         const id = uid(),
-          project = str(args.project_id ?? "dasn", "Project", 64),
+          project = projectId,
           title = str(args.title, "Title", 160),
           description = str(args.description, "Description", 8000),
           criteria = str(args.criteria, "Acceptance criteria", 4000),
@@ -314,6 +662,7 @@ export class Store {
         return {
           entity: id,
           project,
+          authorization: policy,
           response: { ok: true, task_id: id, version: 1 },
           detail: title,
           steps: [
@@ -327,7 +676,7 @@ export class Store {
               kind,
               scope,
               base,
-              "proposed",
+              policy.protected || policy.task_approval === "maintainers" ? "proposed" : "ready",
               actor.id,
               now,
               now,
@@ -337,12 +686,13 @@ export class Store {
       }
       if (action === "post_finding") {
         const id = uid(),
-          project = str(args.project_id ?? "dasn", "Project", 64),
+          project = projectId,
           body = str(args.body, "Finding", 8000);
         await this.project(project);
         return {
           entity: id,
           project,
+          authorization: policy,
           response: { ok: true, note_id: id },
           steps: [
             this.stmt(
@@ -370,6 +720,8 @@ export class Store {
           throw new Problem(403, "A different contributor must review this submission.");
         }
         return {
+          project: projectId,
+          authorization: policy,
           entity: s.work_id,
           response: { ok: true, submission_id: submission },
           steps: [
@@ -388,7 +740,6 @@ export class Store {
       }
       const id = taskId(), v = version();
       if (action === "approve_work") {
-        this.owner(actor);
         return changed(id, v, [
           this.stmt(
             "UPDATE work SET state='ready',version=version+1,updated_at=? WHERE id=? AND version=? AND state IN ('proposed','blocked')",
@@ -491,7 +842,6 @@ export class Store {
         ], { submission_id: submission });
       }
       if (action === "accept_submission" || action === "request_changes") {
-        this.owner(actor);
         const submission = str(args.submission_id, "Submission", 64),
           statement = str(args.statement, "Decision note", 4000),
           accept = action === "accept_submission";
@@ -501,11 +851,15 @@ export class Store {
           id,
         );
         if (!row) throw new Problem(404, "Submission not found.");
+        if (
+          accept && !policy.protected && !policy.allow_self_accept && row.author_id === actor.id
+        ) throw new Problem(403, "This project's rules do not permit self-acceptance.");
+        const reviewsRequired = policy.protected ? 1 : policy.reviews_required;
         const steps = [
           this.stmt(
             `UPDATE work SET state=?,version=version+1,updated_at=?,claimant=NULL WHERE id=? AND version=? AND state='submitted' AND EXISTS(SELECT 1 FROM submissions WHERE id=? AND work_id=? AND status='pending') ${
               accept
-                ? "AND EXISTS(SELECT 1 FROM reviews WHERE submission_id=? AND reviewer_id!=? AND verdict='approve') AND NOT EXISTS(SELECT 1 FROM reviews WHERE submission_id=? AND verdict='changes_requested')"
+                ? "AND (SELECT count(*) FROM reviews WHERE submission_id=? AND reviewer_id!=? AND verdict='approve')>=? AND NOT EXISTS(SELECT 1 FROM reviews WHERE submission_id=? AND verdict='changes_requested')"
                 : ""
             }`,
             accept ? "accepted" : "ready",
@@ -514,7 +868,7 @@ export class Store {
             v,
             submission,
             id,
-            ...(accept ? [submission, row.author_id, submission] : []),
+            ...(accept ? [submission, row.author_id, reviewsRequired, submission] : []),
           ),
           this.stmt(
             "UPDATE submissions SET status=? WHERE id=? AND changes()=1",
@@ -523,16 +877,30 @@ export class Store {
           ),
         ];
         if (accept) {
+          const receiptId = uid();
           steps.push(
             this.stmt(
               "INSERT INTO receipts(id,submission_id,work_id,contributor_id,accepted_by,statement,created_at) SELECT ?,?,?,?,?,?,? WHERE changes()=1",
-              uid(),
+              receiptId,
               submission,
               id,
               row.author_id,
               actor.id,
               statement,
               now,
+            ),
+            this.stmt(
+              "INSERT INTO receipt_policies(receipt_id,policy_json) SELECT ?,? WHERE changes()=1",
+              receiptId,
+              JSON.stringify({
+                project_version: policy.version,
+                protected: Boolean(policy.protected),
+                acceptance: policy.acceptance,
+                reviews_required: reviewsRequired,
+                allow_self_accept: Boolean(policy.protected || policy.allow_self_accept),
+                meaning:
+                  "Recorded acceptance under these project rules; not legal ownership or payment rights.",
+              }),
             ),
           );
         }
@@ -547,14 +915,16 @@ export class Store {
       project,
     );
   }
-  async receipts() {
+  async receipts(project = "dasn") {
     return await this.all(
-      "SELECT r.*,p.name AS contributor_name,o.name AS accepted_by_name,w.title,s.summary,s.pr_url,s.commit_sha FROM receipts r JOIN principals p ON p.id=r.contributor_id JOIN principals o ON o.id=r.accepted_by JOIN work w ON w.id=r.work_id JOIN submissions s ON s.id=r.submission_id ORDER BY r.created_at DESC LIMIT 100",
+      "SELECT r.*,rp.policy_json AS acceptance_policy,p.name AS contributor_name,o.name AS accepted_by_name,w.title,s.summary,s.pr_url,s.commit_sha FROM receipts r LEFT JOIN receipt_policies rp ON rp.receipt_id=r.id JOIN principals p ON p.id=r.contributor_id JOIN principals o ON o.id=r.accepted_by JOIN work w ON w.id=r.work_id JOIN submissions s ON s.id=r.submission_id WHERE w.project_id=? ORDER BY r.created_at DESC LIMIT 100",
+      project,
     );
   }
-  async events() {
+  async events(project = "dasn") {
     return await this.all(
-      "SELECT e.*,p.name AS actor_name FROM events e JOIN principals p ON p.id=e.actor_id ORDER BY e.created_at DESC LIMIT 100",
+      "SELECT e.*,p.name AS actor_name FROM events e JOIN principals p ON p.id=e.actor_id WHERE e.project_id=? ORDER BY e.created_at DESC LIMIT 100",
+      project,
     );
   }
 }

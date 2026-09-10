@@ -29,7 +29,7 @@ deno run --allow-env=CLOUDFLARE_ACCOUNT_ID,CLOUDFLARE_API_TOKEN \
   scripts/cloudflare.mjs deploy --confirm-free-plan
 ```
 
-The package in `dist/` must match its SHA-256 manifest. Deployment metadata is saved in `.local/cloudflare-release.json`; the initial owner invitation is saved before remote creation in `.local/cloudflare-owner-invitation.txt` so an uncertain response can be recovered. Stop on deployment errors and inspect the named resource instead of recreating it blindly.
+The package in `dist/` must match its SHA-256 manifest and current source. The deploy script applies both `0001.sql` and the additive `0002.sql` migration before seeding. Back up any existing D1 database before its first multi-project upgrade; the local development database has a pre-upgrade backup. Deployment metadata is saved in `.local/cloudflare-release.json`; the initial owner invitation is saved before remote creation in `.local/cloudflare-owner-invitation.txt` so an uncertain response can be recovered. Stop on deployment errors and inspect the named resource instead of recreating it blindly.
 
 ## Live verification before inviting friends
 

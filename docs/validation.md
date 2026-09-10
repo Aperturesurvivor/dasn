@@ -28,10 +28,21 @@ Intentional functional differences from the concept: actual endpoint replaces th
 
 ## Not yet demonstrated
 
-- Production Cloudflare deployment, account Free plan, actual D1 transaction behavior, quota behavior, or a live public URL.
+- Production Cloudflare deployment, actual D1 transaction behavior, quota exhaustion behavior, or a live public URL. The signed-in dashboard confirms Workers Free is the current account plan.
 - An actual model session using DASN tools in Codex, Claude Code, or Cursor, or a friend completing a contribution. The Claude Code health handshake and protocol tests are not all-client acceptance testing.
 - License selection, GitHub integration, or a real accepted software PR. Source publication is authorized and tracked separately from service deployment.
 
 ## Environment issue
 
 The initial Documents checkout was automatically offloaded (`compressed,dataless`), stalling reads. This task's own text files were recovered from its write history into `/Users/josiahwilson/dasn`; the original offloaded path was not deleted. Available disk space later fell below 5 GB due to unrelated machine activity; DASN is about 2 MB. Avoid dependency restoration or other disk-heavy workflows until adequate space is available.
+
+
+## Multi-project update — 2026-09-09
+
+- 34 tests pass: the previous 25 plus shared governance/configuration retries, cross-project isolation, maintainer delegation, protected DASN controls, project-scoped invitations and identity reuse, configurable acceptance with immutable policy history, removed membership persistence, policy-change races, and one-time legacy migration.
+- Browser QA used an isolated in-memory service with the real request handler and two projects. The second project was explicitly labeled a local test fixture and was not saved to the real database or published. Each row showed its own code, governance, and joining policy; the second row copied its own project prompt. Cursor copied valid JSON for the correct endpoint.
+- Checked desktop width 1008 and mobile 390×844 with no horizontal overflow. Screenshots: [multiple projects desktop](qa/projects-desktop.png) and [mobile](qa/projects-mobile.png), both visually inspected. The fixture server was stopped and the preview restored to the real loopback service; viewport and clipboard restored.
+- The real local database was backed up before the additive migration and restarted successfully. Claude Code's actual MCP health check still reports Connected.
+- Project configuration supports the controls listed in the governance guide. Custom voting/consensus rules in charter prose are not automatically executed by the service. Attribution does not allocate legal ownership.
+
+The updated 0.2.0 Worker bundle was rebuilt after disk space recovered above 5 GB. Cloudflare account Free status is verified in the dashboard; deployment authentication is still pending because the stored CLI OAuth credential is expired and its refresh failed. No Cloudflare resources have been created for DASN.

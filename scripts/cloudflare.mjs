@@ -7,7 +7,7 @@ const instructions = {
   worker: scriptName,
   database: databaseName,
   plan: "Workers Free only",
-  modules: ["entry.mjs", "assets.mjs", "store.mjs", "tools.mjs", "worker.mjs"],
+  modules: ["entry.mjs", "assets.mjs", "store.mjs", "tools.mjs", "workspace.mjs", "worker.mjs"],
   external_actions: [
     "Create the dedicated D1 database if absent",
     "Apply the reviewed schema and seed only an empty database",
@@ -121,6 +121,7 @@ const query = async (sql, params = []) => {
 };
 await query(await Deno.readTextFile("migrations/0001.sql"));
 await query(await Deno.readTextFile("migrations/0002.sql"));
+await query(await Deno.readTextFile("migrations/0003.sql"));
 const make = (sql) => {
   const bound = (params) => ({
     bind: (...a) => bound(a),

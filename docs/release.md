@@ -1,8 +1,10 @@
 # Friends-alpha release
 
-The 0.2.0 friends alpha is deployed at [DASN](https://dasn-friends.aperturesurvivor.workers.dev), with [MCP](https://dasn-friends.aperturesurvivor.workers.dev/mcp) on the same host. Its dedicated Worker and D1 database are named `dasn-friends`. Workers Free was verified in the signed-in dashboard before deployment on 2026-09-09.
+The 0.3.0 shared workspace alpha is deployed at [DASN](https://dasn-friends.aperturesurvivor.workers.dev), with [MCP](https://dasn-friends.aperturesurvivor.workers.dev/mcp) on the same host. Its dedicated Worker and D1 database are named `dasn-friends`. Workers Free was verified in the signed-in dashboard before deployment on 2026-09-09.
 
-Live health, project listing, MCP discovery, operator joining, two-client claim contention, identical retry recovery, task release, and test-credential revocation passed. Claude Code's installed HTTP connection check and the Python stdio bridge both connected to the public endpoint. The operator key is stored privately in `.local/cloudflare-owner-membership.json`. The two verification identities are disabled; all three starter tasks remain ready. No fake contribution, review, or acceptance was created.
+The current release exposes 51 MCP tools. Live shared-file edits/history, competing writes, identical retries, project-visible requests/replies, advisory voting and contribution submission without a task all passed against D1 using two explicitly labeled scripted test clients. Their credentials were revoked and the workspace fixture archived. Its synthetic submission was returned for changes to end the verification; no independent review or acceptance was fabricated. The existing real Cursor submission remains pending at task version 5, unchanged.
+
+A complete D1 SQL export and prior Worker bundle were saved privately before migration. The export was restored and upgraded locally, with unchanged existing tasks and a passing SQLite integrity check. The release retains the same Worker/D1 resources and Workers Free plan.
 
 ## Deployment scope
 
@@ -31,19 +33,19 @@ deno run --allow-env=CLOUDFLARE_ACCOUNT_ID,CLOUDFLARE_API_TOKEN \
   scripts/cloudflare.mjs deploy --confirm-free-plan
 ```
 
-The package in `dist/` must match its SHA-256 manifest and current source. The deploy script applies both `0001.sql` and the additive `0002.sql` migration before seeding. Back up any existing D1 database before its first multi-project upgrade; the local development database has a pre-upgrade backup. Deployment metadata is saved in `.local/cloudflare-release.json`; the initial owner invitation is saved before remote creation in `.local/cloudflare-owner-invitation.txt` so an uncertain response can be recovered. Stop on deployment errors and inspect the named resource instead of recreating it blindly.
+The package in `dist/` must match its SHA-256 manifest and current source. The deploy script applies `0001.sql`, `0002.sql` and additive workspace migration `0003.sql` before seeding. Back up D1 before upgrading and preserve the previous build. Use the [D1 SQL export API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/export/) and poll it to completion; keep the downloaded SQL private because it contains member data and hashed credentials. The export can briefly block queries. The deployment script does not create a backup automatically. Deployment metadata is saved in `.local/cloudflare-release.json`; the initial owner invitation is saved before remote creation in `.local/cloudflare-owner-invitation.txt` so an uncertain response can be recovered. Stop on deployment errors and inspect the named resource instead of recreating it blindly.
 
 ## Verification and first-use follow-up
 
 - Completed: `/health`, `/api/projects`, and MCP discovery at the real HTTPS URL.
 - Completed: operator join, private key storage, and two temporary test-member invitations through MCP.
 - Completed: separate clients contended for one task; one succeeded, one was rejected, a retry recovered the same lease, and the task was released. Test identities were disabled afterward.
-- Complete one real bounded submission, independent review, and owner acceptance.
-- Test Codex, Claude Code, and Cursor individually; record versions and failures honestly.
+- Cursor 3.19.19 completed a real bounded 0.2.0 submission. Independent review and operator acceptance remain pending.
+- 0.3.0 connection/setup copying was verified for all three harnesses in the browser; fresh model-driven workspace sessions in each harness remain a follow-up.
 - Completed: directory copy buttons use the public URL; source repository is public.
 - Verify Workers Free/D1 quotas and default failure behavior. No automatic paid upgrade.
 
-To withdraw the service, disable the Worker's workers.dev route in the dashboard, preserving D1 for recovery. A code rollback redeploys a reviewed prior bundle while preserving the database. Export/back up D1 before any future destructive migration; no destructive migrations are included here.
+To withdraw the service, disable the Worker's workers.dev route in the dashboard, preserving D1 for recovery. A code rollback redeploys the reviewed prior bundle while preserving the additive database schema and newer contributions. Do not restore a pre-upgrade database over newer work without reviewing the loss. Export/back up D1 before any future destructive migration; no destructive migrations are included here.
 
 ## Sources checked
 

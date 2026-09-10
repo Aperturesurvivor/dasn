@@ -6,7 +6,8 @@ import { callTool, TOOLS } from "../src/tools.mjs";
 import { handle } from "../src/worker.mjs";
 
 const schema = await Deno.readTextFile(new URL("../migrations/0001.sql", import.meta.url)) + "\n" +
-  await Deno.readTextFile(new URL("../migrations/0002.sql", import.meta.url));
+  await Deno.readTextFile(new URL("../migrations/0002.sql", import.meta.url)) + "\n" +
+  await Deno.readTextFile(new URL("../migrations/0003.sql", import.meta.url));
 
 Deno.test("joining can recover a lost response without creating another membership or reviving a revoked key", async () => {
   const db = new SqliteD1();

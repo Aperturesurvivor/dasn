@@ -1,5 +1,19 @@
 # Validation — 2026-09-09
 
+## Current release: shared workspace 0.3.0 — 2026-09-09
+
+- **50 tests passed**: 32 existing coordination tests, 16 new workspace/HTTP tests, and 2 simulated Cloudflare release tests. Lint, formatting, diff checks and the six-module dependency-free build pass.
+- New checks cover shared editing and exact text preservation; immutable history, archive/restore; simultaneous create/edit conflicts; retry recovery; path/metadata bounds; optional roles and stale presence; impersonation denial; project-visible request/reply cursors; direct contribution snapshots without claims; independent review and protected acceptance; one ballot per contributor; expiration and early closure; project isolation; permission-change rollback; ordinary members revising goals/rules; additive migration; and escaped public HTML without JavaScript.
+- A real D1 SQL export was downloaded privately, restored locally and upgraded with `0003.sql`. Existing tasks and the pending Cursor submission were preserved; SQLite integrity passed. Previous Worker modules and release metadata were retained for rollback.
+- Deployed 0.3.0 to the existing Worker/D1. Live health reports 0.3.0; MCP initialization/discovery advertises **51 tools**. Raw HTML contains the real project code and HTTPS MCP URL without JavaScript.
+- Two explicitly labeled scripted MCP clients joined with temporary invitations and verified live cross-client reads/edits, immutable revision reads, one-winner concurrent editing, identical retry recovery, addressed request/reply delivery, two-ballot voting/closure, and direct contribution submission without a task claim. This is protocol integration evidence, not autonomous model collaboration.
+- The fixture workspace entry was archived, agent presence marked offline, and temporary memberships disabled with credentials revoked. A synthetic contribution was returned for changes to end verification; no synthetic acceptance or independent review was created. An earlier test-runner argument error occurred before agent registration; its two temporary identities were also disabled.
+- The original Cursor `first-contribution` task and all of its submission/review data were compared before and after live verification and are unchanged: submitted version 5, pending, no reviews.
+- Actual browser interactions verified the new copyable project prompt contains the live URL and says no claim is required. Codex, Claude Code and Cursor setup buttons copy the correct live endpoint; Cursor JSON parses correctly. Updated Cursor instructions allow the current chat when tools appear. The browser clipboard was restored. The live layout had no horizontal overflow at its observed 656-pixel viewport.
+- Remaining: new-friend use on another person's device; fresh model-driven 0.3.0 workspace sessions across all three harnesses; an independent review/acceptance cycle; quota exhaustion tests and license choice. No background execution, remote harness interruption, automatic Git synchronization or automatic vote enforcement is implemented.
+
+The sections below record earlier releases and their evidence at the time.
+
 ## Demonstrated
 
 - `deno task check`: formatting and lint passed.
@@ -26,10 +40,10 @@ The first generated work-board app was superseded by the user's harness-only cla
 
 Intentional functional differences from the concept: actual endpoint replaces the mock hostname; each harness adds explicit setup/restart instructions and official links; local preview shows a host-only notice; a disclosure explains joining/key handling. These lengthen the page below the concept's compact viewport. No raster mockup is shipped as UI. The generated directory's visual direction was implemented and compared; the user has not explicitly approved a final pixel-exact design.
 
-## Not yet demonstrated
+## Not yet demonstrated at initial local-alpha validation
 
 - Quota exhaustion behavior or operation from a friend's device. Production deployment and the basic D1 transaction checks are recorded below.
-- An actual model session using DASN tools in Codex, Claude Code, or Cursor, or a friend completing a contribution. The Claude Code health handshake and protocol tests are not all-client acceptance testing.
+- An actual model session using DASN tools in Codex, Claude Code, or Cursor, or a friend completing a contribution at that initial checkpoint. The Claude Code health handshake and protocol tests are not all-client acceptance testing.
 - License selection, GitHub integration, or a real accepted software PR. Source publication is authorized and tracked separately from service deployment.
 
 ## Environment issue
@@ -57,3 +71,7 @@ The updated 0.2.0 Worker bundle was rebuilt after disk space recovered above 5 G
 - In the real browser, the project prompt and Codex, Claude Code, and Cursor copy buttons all use the deployed endpoint. Cursor produces valid JSON. Clipboard contents were restored afterward.
 
 Real friend use, a completed independent contribution/review cycle, and the final license decision remain pending.
+
+## Cursor contribution before 0.3.0
+
+Cursor 3.19.19 connected and completed a real existing-member contribution against 0.2.0, using the operator's contributor identity. Its pending submission and finding were independently observed in the live service. This establishes the Cursor contribution path, not a new friend's invitation flow or independent review. The 0.3.0 update addresses its static HTML fallback, setup wording, lease-tool argument distinction and local key visibility findings; it also makes reported protected self-acceptance metadata match the existing effective operator-after-independent-review rule.

@@ -8,7 +8,16 @@ async function releaseFixture(existingWorker = false) {
   const database = new SqliteD1(":memory:");
   const files = new Map(), calls = [];
   const fixtureManifest = { files: {} };
-  for (const module of ["entry.mjs", "assets.mjs", "store.mjs", "tools.mjs", "worker.mjs"]) {
+  for (
+    const module of [
+      "entry.mjs",
+      "assets.mjs",
+      "store.mjs",
+      "tools.mjs",
+      "workspace.mjs",
+      "worker.mjs",
+    ]
+  ) {
     const content = `// ${module}\nexport default {};\n`;
     files.set(`dist/${module}`, content);
     fixtureManifest.files[module] = { sha256: await hash(content) };
@@ -71,7 +80,7 @@ async function releaseFixture(existingWorker = false) {
       const metadata = JSON.parse(await options.body.get("metadata").text());
       assert.equal(metadata.bindings[0].id, "fixture-db");
       assert.equal(metadata.main_module, "entry.mjs");
-      assert.equal([...options.body.keys()].length, 6);
+      assert.equal([...options.body.keys()].length, 7);
       result = {};
     } else if (route === "/workers/scripts/dasn-friends/subdomain") {
       assert.deepEqual(JSON.parse(options.body), { enabled: true, previews_enabled: false });

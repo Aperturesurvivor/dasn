@@ -6,6 +6,7 @@ await Deno.mkdir(".local", { recursive: true, mode: 0o700 });
 const db = new SqliteD1(".local/dasn.sqlite");
 db.sql.exec(await Deno.readTextFile(new URL("../migrations/0001.sql", import.meta.url)));
 db.sql.exec(await Deno.readTextFile(new URL("../migrations/0002.sql", import.meta.url)));
+db.sql.exec(await Deno.readTextFile(new URL("../migrations/0003.sql", import.meta.url)));
 const bootstrap = await seed(db);
 if (bootstrap) {
   await Deno.writeTextFile(".local/owner-invitation.txt", bootstrap + "\n", { mode: 0o600 });

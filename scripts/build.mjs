@@ -1,7 +1,7 @@
 import { hash } from "../src/store.mjs";
 await Deno.mkdir("dist", { recursive: true });
-const manifest = { version: "0.2.0", files: {} };
-for (const file of ["store.mjs", "tools.mjs", "worker.mjs"]) {
+const manifest = { version: "0.3.0", files: {} };
+for (const file of ["store.mjs", "tools.mjs", "workspace.mjs", "worker.mjs"]) {
   await Deno.copyFile(`src/${file}`, `dist/${file}`);
 }
 const assets = {};
@@ -21,7 +21,16 @@ await Deno.writeTextFile(
   "dist/entry.mjs",
   `import {handle} from './worker.mjs';\nimport {ASSETS} from './assets.mjs';\nexport default {fetch(request,env){return handle(request,{...env,ASSETS});}};\n`,
 );
-for (const filename of ["entry.mjs", "assets.mjs", "store.mjs", "tools.mjs", "worker.mjs"]) {
+for (
+  const filename of [
+    "entry.mjs",
+    "assets.mjs",
+    "store.mjs",
+    "tools.mjs",
+    "workspace.mjs",
+    "worker.mjs",
+  ]
+) {
   const content = await Deno.readTextFile(`dist/${filename}`);
   manifest.files[filename] = {
     bytes: new TextEncoder().encode(content).length,
@@ -30,5 +39,5 @@ for (const filename of ["entry.mjs", "assets.mjs", "store.mjs", "tools.mjs", "wo
 }
 await Deno.writeTextFile("dist/manifest.json", JSON.stringify(manifest, null, 2) + "\n");
 console.log(
-  "Built a dependency-free Worker package with 5 modules. No data, invitations, or membership keys included.",
+  "Built a dependency-free Worker package with 6 modules. No data, invitations, or membership keys included.",
 );

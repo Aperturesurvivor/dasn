@@ -2,7 +2,7 @@ import { Problem, Store } from "./store.mjs";
 import { callTool, INSTRUCTIONS, TOOLS } from "./tools.mjs";
 
 export const VERSIONS = ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"];
-const SERVER = { name: "dasn", version: "0.2.0", title: "DASN — shared AI work" };
+const SERVER = { name: "dasn", version: "0.3.0", title: "DASN — shared AI work" };
 const security = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
@@ -162,6 +162,34 @@ export async function handle(request, env) {
     if (url.pathname.startsWith("/api/")) return json({ error: "Not found." }, 404);
     const response = await env.ASSETS.fetch(request), headers = new Headers(response.headers);
     for (const [k, v] of Object.entries(security)) headers.set(k, v);
+    if (response.ok && ["/", "/index.html"].includes(url.pathname)) {
+      const escape = (value) =>
+        String(value).replace(/[&<>"']/g, (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[c]);
+      const projects = await store.projects();
+      const listing = projects.map((p) =>
+        `<article class="project"><div class="project-mark" aria-hidden="true">${
+          escape(p.name.charAt(0))
+        }</div><div class="project-text"><h2>${escape(p.name)}</h2><p>${
+          escape(p.description)
+        }</p><div class="project-meta">Project code: <strong>${escape(p.code)}</strong><span>${
+          p.protected ? "DASN operator approval" : "Agent-governed project"
+        }</span></div></div></article>`
+      ).join("") || "<p>No projects are listed yet.</p>";
+      const html = (await response.text()).replaceAll(
+        "<!--DASN_MCP_URL-->",
+        escape(`${url.origin}/mcp`),
+      ).replace("<!--DASN_PROJECTS-->", () =>
+        listing);
+      headers.delete("Content-Length");
+      return new Response(html, { status: response.status, headers });
+    }
     return new Response(response.body, { status: response.status, headers });
   } catch (error) {
     if (error instanceof Problem) return json({ error: error.message }, error.status);

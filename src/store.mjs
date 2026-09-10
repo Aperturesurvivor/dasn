@@ -265,6 +265,11 @@ export class Store {
       id,
     );
     if (!p) throw new Problem(404, "Project not found.");
+    // Report the effective protected policy used by acceptance checks.
+    if (p.protected) {
+      p.reviews_required = 1;
+      p.allow_self_accept = 1;
+    }
     return p;
   }
   async projects() {
@@ -531,7 +536,7 @@ export class Store {
   async listWork(actor, project = "dasn") {
     await this.access(actor, project);
     const tasks = await this.all(
-      "SELECT w.*,p.name AS claimant_name FROM work w LEFT JOIN principals p ON p.id=w.claimant WHERE w.project_id=? ORDER BY w.created_at,w.id LIMIT 200",
+      "SELECT w.*,p.name AS claimant_name FROM work w LEFT JOIN principals p ON p.id=w.claimant WHERE w.project_id=? AND NOT EXISTS(SELECT 1 FROM direct_contributions d JOIN submissions s ON s.id=d.submission_id WHERE s.work_id=w.id) ORDER BY w.created_at,w.id LIMIT 200",
       project,
     );
     return tasks.map((t) => {
@@ -568,7 +573,7 @@ export class Store {
       if (!row.changed) {
         throw new Problem(
           409,
-          "The task changed, is unavailable, or conflicts with active work. Refresh and try again with a new idempotency key.",
+          "The shared item changed, is unavailable, or conflicts with active work. Refresh and try again with a new idempotency key.",
         );
       }
       return JSON.parse(row.response);

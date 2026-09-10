@@ -2,7 +2,7 @@
   "tasks": {
     "dev": "deno run --allow-net=127.0.0.1 --allow-read --allow-write=.local --allow-env=DASN_PORT src/local.mjs",
     "test": "deno test --allow-read --allow-write=.local --allow-run=python3 --allow-net=127.0.0.1 tests/",
-    "check": "deno lint src scripts tests && deno fmt --check src scripts tests public deno.json",
+    "check": "deno lint src scripts tests public && deno fmt --check src scripts tests public deno.json",
     "build": "deno run --allow-read --allow-write=dist scripts/build.mjs"
   },
   "lock": true,

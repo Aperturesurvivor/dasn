@@ -1,15 +1,20 @@
 import { hash } from "../src/store.mjs";
 await Deno.mkdir("dist", { recursive: true });
-const manifest = { version: "0.3.0", files: {} };
+const manifest = { version: "0.3.1", files: {} };
 for (const file of ["store.mjs", "tools.mjs", "workspace.mjs", "worker.mjs"]) {
   await Deno.copyFile(`src/${file}`, `dist/${file}`);
 }
 const assets = {};
 for (
-  const [filename, type] of [["index.html", "text/html; charset=utf-8"], [
-    "style.css",
-    "text/css; charset=utf-8",
-  ], ["site.js", "text/javascript; charset=utf-8"]]
+  const [filename, type] of [
+    ["index.html", "text/html; charset=utf-8"],
+    [
+      "style.css",
+      "text/css; charset=utf-8",
+    ],
+    ["site.js", "text/javascript; charset=utf-8"],
+    ["starfield.js", "text/javascript; charset=utf-8"],
+  ]
 ) assets[`/${filename}`] = { type, body: await Deno.readTextFile(`public/${filename}`) };
 await Deno.writeTextFile(
   "dist/assets.mjs",

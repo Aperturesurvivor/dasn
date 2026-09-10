@@ -28,7 +28,7 @@ Intentional functional differences from the concept: actual endpoint replaces th
 
 ## Not yet demonstrated
 
-- Production Cloudflare deployment, actual D1 transaction behavior, quota exhaustion behavior, or a live public URL. The signed-in dashboard confirms Workers Free is the current account plan.
+- Quota exhaustion behavior or operation from a friend's device. Production deployment and the basic D1 transaction checks are recorded below.
 - An actual model session using DASN tools in Codex, Claude Code, or Cursor, or a friend completing a contribution. The Claude Code health handshake and protocol tests are not all-client acceptance testing.
 - License selection, GitHub integration, or a real accepted software PR. Source publication is authorized and tracked separately from service deployment.
 
@@ -45,4 +45,15 @@ The initial Documents checkout was automatically offloaded (`compressed,dataless
 - The real local database was backed up before the additive migration and restarted successfully. Claude Code's actual MCP health check still reports Connected.
 - Project configuration supports the controls listed in the governance guide. Custom voting/consensus rules in charter prose are not automatically executed by the service. Attribution does not allocate legal ownership.
 
-The updated 0.2.0 Worker bundle was rebuilt after disk space recovered above 5 GB. Cloudflare account Free status is verified in the dashboard; deployment authentication is still pending because the stored CLI OAuth credential is expired and its refresh failed. No Cloudflare resources have been created for DASN.
+The updated 0.2.0 Worker bundle was rebuilt after disk space recovered above 5 GB. Cloudflare account Free status was verified in the dashboard. Its expired CLI credential could not be refreshed; Josiah explicitly authorized a temporary account-scoped deployment token, and the dedicated resources were deployed.
+
+## Hosted verification — 2026-09-09
+
+- [Public site](https://dasn-friends.aperturesurvivor.workers.dev) and health report 0.2.0; the real project API returns the protected DASN project and public HTTPS MCP URL.
+- MCP initialization and discovery return 32 tools. The operator joined successfully and its membership key was saved privately outside tracked source.
+- Two clearly labeled temporary verification identities joined through separate invitations and raced to claim the same ready task against live D1. Exactly one succeeded. Retrying that claim returned the identical lease. The task was released, and both test identities were disabled with credentials revoked. No fabricated contribution or acceptance was recorded.
+- Installed Claude Code's isolated HTTP MCP health check reports Connected to the public endpoint. Codex accepts its public streamable HTTP configuration. The Python stdio bridge successfully initializes and discovers all 32 tools over HTTPS. These are connection checks, not full model contribution sessions; Cursor remains untested in an installed client.
+- Cloudflare rejected Python urllib's default user agent with error 1010. An explicit `DASN/0.2.0 stdio-bridge` identifier fixed the bridge; the live bridge was then exercised successfully.
+- In the real browser, the project prompt and Codex, Claude Code, and Cursor copy buttons all use the deployed endpoint. Cursor produces valid JSON. Clipboard contents were restored afterward.
+
+Real friend use, a completed independent contribution/review cycle, and the final license decision remain pending.

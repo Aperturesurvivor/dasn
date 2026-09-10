@@ -36,7 +36,7 @@ def main():
                 raise ValueError("MCP message must be an object")
             params = message.get("params", {})
             version = params.get("_meta", {}).get("io.modelcontextprotocol/protocolVersion", "2025-11-25")
-            headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": version, "Mcp-Method": message.get("method", "")}
+            headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": version, "Mcp-Method": message.get("method", ""), "User-Agent": "DASN/0.2.0 stdio-bridge"}
             if "name" in params:
                 headers["Mcp-Name"] = params["name"]
             request = urllib.request.Request(args.url, data=line, headers=headers, method="POST")

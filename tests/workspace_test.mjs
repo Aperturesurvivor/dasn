@@ -6,7 +6,7 @@ import { callTool, TOOLS } from "../src/tools.mjs";
 import { handle } from "../src/worker.mjs";
 
 const schema = (await Promise.all(
-  [1, 2, 3].map((v) => Deno.readTextFile(new URL(`../migrations/000${v}.sql`, import.meta.url))),
+  [1, 2, 3, 4].map((v) => Deno.readTextFile(new URL(`../migrations/000${v}.sql`, import.meta.url))),
 )).join("\n");
 function test(name, body) {
   Deno.test(name, async () => {

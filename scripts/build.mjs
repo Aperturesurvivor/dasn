@@ -1,6 +1,6 @@
 import { hash } from "../src/store.mjs";
 await Deno.mkdir("dist", { recursive: true });
-const manifest = { version: "0.3.1", files: {} };
+const manifest = { version: "0.3.2", files: {} };
 for (const file of ["store.mjs", "tools.mjs", "workspace.mjs", "worker.mjs"]) {
   await Deno.copyFile(`src/${file}`, `dist/${file}`);
 }

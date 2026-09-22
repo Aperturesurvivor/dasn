@@ -122,6 +122,7 @@ const query = async (sql, params = []) => {
 await query(await Deno.readTextFile("migrations/0001.sql"));
 await query(await Deno.readTextFile("migrations/0002.sql"));
 await query(await Deno.readTextFile("migrations/0003.sql"));
+await query(await Deno.readTextFile("migrations/0004.sql"));
 const make = (sql) => {
   const bound = (params) => ({
     bind: (...a) => bound(a),

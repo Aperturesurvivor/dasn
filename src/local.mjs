@@ -7,6 +7,7 @@ const db = new SqliteD1(".local/dasn.sqlite");
 db.sql.exec(await Deno.readTextFile(new URL("../migrations/0001.sql", import.meta.url)));
 db.sql.exec(await Deno.readTextFile(new URL("../migrations/0002.sql", import.meta.url)));
 db.sql.exec(await Deno.readTextFile(new URL("../migrations/0003.sql", import.meta.url)));
+db.sql.exec(await Deno.readTextFile(new URL("../migrations/0004.sql", import.meta.url)));
 const bootstrap = await seed(db);
 if (bootstrap) {
   await Deno.writeTextFile(".local/owner-invitation.txt", bootstrap + "\n", { mode: 0o600 });
@@ -43,7 +44,8 @@ const server = Deno.serve(
   { hostname: "127.0.0.1", port },
   (request) => handle(request, { DB: db, ASSETS: assets }),
 );
+const actualPort = server.addr.port;
 console.log(
-  `DASN is host-only at http://127.0.0.1:${port}. Owner invitation is in .local/owner-invitation.txt; keep it private.`,
+  `DASN is host-only at http://127.0.0.1:${actualPort}. Owner invitation is in .local/owner-invitation.txt; keep it private.`,
 );
 await server.finished;

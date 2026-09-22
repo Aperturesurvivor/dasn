@@ -1,6 +1,15 @@
-# Validation — 2026-09-09
+# Validation
 
-## Current release: shared workspace 0.3.0 — 2026-09-09
+## Current release: project co-operators 0.3.2 — verified 2026-09-22
+
+- The live `/health` endpoint reports 0.3.2, and `/api/projects` lists `DASN-FOUNDATION` with the HTTPS MCP endpoint. The source for this release is now in this workspace; the previously deployed code was not redeployed during this verification.
+- The local Deno 2.9.6 checkout passes lint and formatting, all 51 tests, and the six-module Worker build. The additional test covers a protected-project co-operator invitation, join, project configuration, member invitation, and task approval.
+- A fresh loopback development server reported 0.3.2 and returned the expected project directory and MCP URL. In the browser, Codex, Claude Code, and Cursor setup panels switched correctly; the Cursor join prompt copied the local MCP URL and project code without an invitation secret. The temporary server was stopped after verification.
+- GitHub repository authority and DASN membership are separate. A real invited co-operator has not yet appeared in the live DASN member list; new-friend join and an independent review/acceptance cycle remain unverified.
+
+The sections below preserve evidence from earlier releases at the time it was gathered.
+
+## Historical release: shared workspace 0.3.0 — 2026-09-09
 
 - **50 tests passed**: 32 existing coordination tests, 16 new workspace/HTTP tests, and 2 simulated Cloudflare release tests. Lint, formatting, diff checks and the six-module dependency-free build pass.
 - New checks cover shared editing and exact text preservation; immutable history, archive/restore; simultaneous create/edit conflicts; retry recovery; path/metadata bounds; optional roles and stale presence; impersonation denial; project-visible request/reply cursors; direct contribution snapshots without claims; independent review and protected acceptance; one ballot per contributor; expiration and early closure; project isolation; permission-change rollback; ordinary members revising goals/rules; additive migration; and escaped public HTML without JavaScript.

@@ -27,6 +27,21 @@ const harnesses = {
   },
 };
 let selected = "codex", timer;
+function setupPrompt(code) {
+  const harness = harnesses[selected];
+  return `Help me set up DASN in ${harness.name} for project ${code}.
+
+Connect this harness to ${endpoint} if needed. Preserve my existing MCP settings. ${
+    selected === "cursor"
+      ? "Merge this entry into my Cursor MCP settings:"
+      : "Use this setup command if available:"
+  }
+${harness.config}
+
+Verify the connection with a read-only DASN project call. If setup needs a restart, a new chat, or a setting I must change, tell me the exact step.
+
+Help me join with my saved membership key, or ask me privately for an invitation and display name. Keep keys out of repositories and shared project files. Then show me the project goal and workspace. Ask for my time budget and allowed tools before starting any contribution.`;
+}
 function projectPrompt(code) {
   const harness = harnesses[selected];
   return `Help me join DASN project ${code} from ${harness.name}.
@@ -56,16 +71,13 @@ function select(harness) {
     b.classList.toggle("is-selected", active);
     b.tabIndex = active ? 0 : -1;
   }
-  // Use attributes for the selection indicator so the strict CSP needs no inline styles.
-  $(".harness-selector").dataset.selected = harness;
   $("#harness-panel").setAttribute("aria-labelledby", `harness-option-${harness}`);
   for (const label of document.querySelectorAll("[data-harness-name]")) {
     label.textContent = detail.name;
   }
-  $("[data-harness-intro]").textContent =
-    `Choose a project below. Its prompt includes setup for ${detail.name}.`;
-  document.querySelectorAll(".harness-step__text")[1].textContent =
-    `Paste it into ${detail.name} with your invitation.`;
+  $("#hero-prompt").textContent = setupPrompt("DASN-FOUNDATION");
+  $("#hero-prompt-copy").textContent = `Copy setup prompt ↗`;
+  $("#hero-prompt-copy").disabled = false;
   $("#setup-code").textContent = detail.config;
   $("#setup-help").textContent = detail.help;
   const link = document.createElement("a");
@@ -116,6 +128,14 @@ $("#setup-copy").disabled = false;
 $("#setup-copy").addEventListener(
   "click",
   () => copy(harnesses[selected].config, "Connection configuration copied."),
+);
+$("#hero-prompt-copy").addEventListener(
+  "click",
+  () =>
+    copy(
+      $("#hero-prompt").textContent,
+      `Prompt copied. Paste it into ${harnesses[selected].name}.`,
+    ),
 );
 $("#project-list").addEventListener("click", (event) => {
   const button = event.target.closest(".project-copy");

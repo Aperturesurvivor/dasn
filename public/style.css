@@ -156,51 +156,6 @@ button:focus-visible {
   text-align: center;
 }
 
-.hero-mark {
-  width: 80px;
-  margin-bottom: 18px;
-  color: var(--gold);
-}
-
-.hero-mark svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.mark-ring,
-.mark-line {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-
-.mark-ring--outer {
-  opacity: 0.8;
-}
-
-.mark-ring--inner {
-  opacity: 0.44;
-}
-
-.mark-line--soft {
-  opacity: 0.4;
-}
-
-.mark-star {
-  fill: currentColor;
-}
-
-.mark-star--small {
-  opacity: 0.86;
-}
-
-.mark-star--core {
-  filter: drop-shadow(0 0 7px rgba(231, 201, 139, 0.8));
-}
-
 .hero h1,
 .section-copy h2,
 .site-footer h2 {
@@ -432,11 +387,6 @@ button:focus-visible {
 
   .hero {
     padding: 102px 20px 36px;
-  }
-
-  .hero-mark {
-    width: 58px;
-    margin-bottom: 14px;
   }
 
   .hero h1 {

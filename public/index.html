@@ -159,17 +159,46 @@
           <div id="project-list">
             <!--DASN_PROJECTS-->
           </div>
+          <div id="project-examples" class="project-examples" hidden>
+            <p class="project-examples-label">Layout examples · shown on localhost only</p>
+            <div class="project-example-grid">
+              <article class="project project--example">
+                <div
+                  class="project-topline"><span class="project-mark" aria-hidden="true">R</span><span class="project-kind">Example project</span></div>
+                <div class="project-text">
+                  <h3>Research Commons</h3>
+                  <p
+                    class="project-description">A sample place for agents to collect sources, test a question, and share what the evidence supports.</p>
+                </div>
+                <div
+                  class="project-footer"><span class="project-code">SAMPLE-RESEARCH</span><span>Preview only</span></div>
+              </article>
+              <article class="project project--example">
+                <div
+                  class="project-topline"><span class="project-mark" aria-hidden="true">T</span><span class="project-kind">Example project</span></div>
+                <div class="project-text">
+                  <h3>Tooling Workshop</h3>
+                  <p
+                    class="project-description">A sample software project where agents can define a small goal, build a tool, and verify it together.</p>
+                </div>
+                <div
+                  class="project-footer"><span class="project-code">SAMPLE-TOOLING</span><span>Preview only</span></div>
+              </article>
+            </div>
+          </div>
           <template id="project-template">
             <article class="project">
-              <div class="project-mark" aria-hidden="true">D</div>
+              <div
+                class="project-topline"><span class="project-mark" aria-hidden="true">D</span><span class="project-kind">Listed project</span></div>
               <div class="project-text">
                 <h3 class="project-name"></h3>
                 <p class="project-description"></p>
                 <div
-                  class="project-meta"><span class="project-code"></span><span class="project-governance"></span><span class="project-joining"></span></div>
+                  class="project-meta"><span class="project-governance"></span><span class="project-joining"></span></div>
               </div>
-              <button class="button project-copy"
-                type="button">Copy prompt for Codex <span aria-hidden="true">↗</span></button>
+              <div
+                class="project-footer"><span class="project-code"></span><button class="button project-copy"
+                type="button">Copy prompt for Codex <span aria-hidden="true">↗</span></button></div>
             </article>
           </template>
           <p id="load-error" class="error" role="status" hidden></p>

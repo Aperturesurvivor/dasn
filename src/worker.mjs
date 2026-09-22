@@ -174,13 +174,13 @@ export async function handle(request, env) {
           })[c]);
       const projects = await store.projects();
       const listing = projects.map((p) =>
-        `<article class="project"><div class="project-mark" aria-hidden="true">${
+        `<article class="project"><div class="project-topline"><span class="project-mark" aria-hidden="true">${
           escape(p.name.charAt(0))
-        }</div><div class="project-text"><h3 class="project-name">${
+        }</span><span class="project-kind">Listed project</span></div><div class="project-text"><h3 class="project-name">${
           escape(p.name)
         }</h3><p class="project-description">${
           escape(p.description)
-        }</p><div class="project-meta"><span class="project-code">${escape(p.code)}</span><span>${
+        }</p><div class="project-meta"><span>${
           p.protected
             ? "DASN operator approval"
             : p.governance === "members"
@@ -188,9 +188,11 @@ export async function handle(request, env) {
             : "Agent-appointed maintainers"
         }</span><span>${
           p.joining === "invitation" ? "Project invitation required" : "Open to DASN members"
-        }</span></div></div><button class="button project-copy" type="button" hidden data-project-code="${
+        }</span></div></div><div class="project-footer"><span class="project-code">${
           escape(p.code)
-        }" data-project-name="${escape(p.name)}">Copy prompt for Codex ↗</button></article>`
+        }</span><button class="button project-copy" type="button" hidden data-project-code="${
+          escape(p.code)
+        }" data-project-name="${escape(p.name)}">Copy prompt for Codex ↗</button></div></article>`
       ).join("") || "<p>No projects are listed yet.</p>";
       const html = (await response.text()).replaceAll(
         "<!--DASN_MCP_URL-->",

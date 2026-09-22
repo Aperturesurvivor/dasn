@@ -206,6 +206,8 @@ async function loadProjects() {
     $("#load-error").hidden = false;
   }
 }
-$("#local-notice").hidden = !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+const localPreview = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+$("#local-notice").hidden = !localPreview;
+$("#project-examples").hidden = !localPreview;
 select(selected);
 loadProjects();

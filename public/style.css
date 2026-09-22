@@ -1010,46 +1010,69 @@ section[id],
   margin: 0;
 }
 #project-list,
+.project-examples,
 .project-hint,
 .projects-section > .error {
   max-width: 1280px;
   margin-left: auto;
   margin-right: auto;
 }
-.project {
+#project-list,
+.project-example-grid {
   display: grid;
-  grid-template-columns: 64px 1fr auto;
-  gap: 30px;
-  align-items: center;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 38px 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
 }
-.project + .project {
-  border-top: 0;
+.project {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 370px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(231, 201, 139, .065), rgba(20, 18, 11, .9) 62%);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+.project:hover {
+  border-color: rgba(231, 201, 139, .6);
+  transform: translateY(-3px);
+}
+.project-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+.project-kind,
+.project-examples-label {
+  color: var(--quiet);
+  font: .62rem/1.5 var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
 }
 .project-mark {
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  flex: none;
+  width: 48px;
+  height: 48px;
   border: 1px solid var(--line);
   border-radius: 50%;
   color: var(--gold);
-  font: 1.65rem var(--serif);
+  font: 1.4rem var(--serif);
 }
 .project h3 {
   margin: 0;
   color: var(--ink);
-  font: 400 2.2rem/1.15 var(--serif);
+  font: 400 clamp(1.8rem, 2.4vw, 2.4rem)/1.15 var(--serif);
   letter-spacing: -.035em;
 }
 .project-description {
   color: var(--muted);
   font-size: .9rem;
   line-height: 1.7;
-  max-width: 670px;
-  margin: 12px 0 18px;
+  margin: 14px 0 22px;
 }
 .project-text {
   min-width: 0;
@@ -1058,18 +1081,48 @@ section[id],
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 18px;
+  gap: 6px 14px;
   color: var(--muted);
   font: .6rem/1.6 var(--mono);
 }
-.project-meta span + span {
-  border-left: 1px solid var(--line);
-  padding-left: 18px;
+.project-meta span + span::before {
+  content: "·";
+  margin-right: 14px;
+  color: var(--gold);
+}
+.project-footer {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px solid var(--soft-line);
+}
+.project-footer > span:last-child:not(.project-code) {
+  color: var(--quiet);
+  font: .68rem var(--mono);
 }
 .project-code {
   color: var(--gold);
   letter-spacing: .09em;
   overflow-wrap: anywhere;
+  font: .64rem/1.5 var(--mono);
+}
+.project-examples {
+  margin-top: 46px;
+}
+.project-examples-label {
+  margin: 0 0 18px;
+}
+.project--example {
+  min-height: 300px;
+  border-style: dashed;
+  background: rgba(231, 201, 139, .025);
+}
+.project--example .project-kind {
+  color: var(--gold);
 }
 .project-hint {
   color: var(--muted);
@@ -1256,12 +1309,9 @@ dialog form {
   }
 }
 @media (max-width: 1000px) {
-  .project {
-    grid-template-columns: 60px 1fr;
-  }
-  .project-copy {
-    grid-column: 2;
-    justify-self: start;
+  #project-list,
+  .project-example-grid {
+    gap: 16px;
   }
 }
 @media (max-width: 900px) {
@@ -1283,32 +1333,26 @@ dialog form {
   .projects-heading {
     margin-bottom: 40px;
   }
+  #project-list,
+  .project-example-grid {
+    grid-template-columns: 1fr;
+  }
   .project {
-    grid-template-columns: 36px 1fr;
-    gap: 18px;
-    padding: 30px 0;
-    align-items: start;
+    min-height: 0;
+    padding: 24px;
   }
   .project-mark {
-    width: 36px;
-    height: 36px;
-    font-size: 1.1rem;
-    margin-top: 3px;
+    width: 42px;
+    height: 42px;
+    font-size: 1.2rem;
   }
   .project h3 {
     font-size: 1.85rem;
   }
-  .project-meta {
-    flex-direction: column;
+  .project-footer {
     align-items: start;
-    gap: 7px;
-  }
-  .project-meta span + span {
-    border: 0;
-    padding-left: 0;
   }
   .project-copy {
-    grid-column: 1 / -1;
     width: 100%;
   }
   .map-node:not(.map-node--gateway) {

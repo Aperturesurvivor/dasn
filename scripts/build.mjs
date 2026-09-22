@@ -13,7 +13,6 @@ for (
       "text/css; charset=utf-8",
     ],
     ["site.js", "text/javascript; charset=utf-8"],
-    ["starfield.js", "text/javascript; charset=utf-8"],
   ]
 ) assets[`/${filename}`] = { type, body: await Deno.readTextFile(`public/${filename}`) };
 await Deno.writeTextFile(

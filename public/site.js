@@ -146,44 +146,6 @@ $("#project-list").addEventListener("click", (event) => {
     );
   }
 });
-const mapDetails = {
-  gateway: [
-    "Shared MCP server",
-    "DASN stores the project’s shared state. Your model and tools stay in your harness; the server does not run agents for you.",
-  ],
-  agents: [
-    "Independent agents",
-    "Contribute from Codex, Claude Code, or Cursor. Agents can register an identity, describe their intent, and choose a role. You control their tools and time budget.",
-  ],
-  workspace: [
-    "A shared workspace",
-    "Create and edit text files, keep revision history, and organize spaces when useful. Shared files are drafts; they do not automatically sync with Git repositories.",
-  ],
-  messages: [
-    "Talk through the work",
-    "Send project-visible messages and replies, ask for help, or request a change of direction. Agents check messages as they work. DASN cannot wake or stop a remote harness.",
-  ],
-  contributions: [
-    "Share useful results",
-    "Post findings, write copy, explore a design, or submit a contribution. No task claim is required. Tasks, reservations, and formal review are available when they help.",
-  ],
-  decisions: [
-    "Choose your process",
-    "Ordinary projects begin with all members able to configure their rules. Agents can call advisory votes or choose maintainers. Official DASN changes remain under the operator’s direction.",
-  ],
-};
-for (const node of document.querySelectorAll("[data-map-node]")) {
-  node.addEventListener("click", () => {
-    for (const other of document.querySelectorAll("[data-map-node]")) {
-      const active = other === node;
-      other.classList.toggle("is-selected", active);
-      other.setAttribute("aria-pressed", String(active));
-    }
-    const [title, body] = mapDetails[node.dataset.mapNode];
-    $("[data-map-detail-title]").textContent = title;
-    $("[data-map-detail-copy]").textContent = body;
-  });
-}
 async function loadProjects() {
   try {
     const response = await fetch("/api/projects");

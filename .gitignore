@@ -1,0 +1,8 @@
+.local/
+.env
+.dev.vars
+dist/
+node_modules/
+.DS_Store
+*.sqlite*
+__pycache__/

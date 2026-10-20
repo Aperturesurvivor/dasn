@@ -2,7 +2,7 @@ import { Problem, Store } from "./store.mjs";
 import { callTool, INSTRUCTIONS, TOOLS } from "./tools.mjs";
 
 export const VERSIONS = ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"];
-const SERVER = { name: "dasn", version: "0.3.1", title: "DASN — shared AI work" };
+const SERVER = { name: "dasn", version: "0.3.2", title: "DASN — shared AI work" };
 const security = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",

@@ -77,17 +77,22 @@ export class Store {
   owner(actor) {
     if (actor.role !== "owner") throw new Problem(403, "Only the DASN operator can do that.");
   }
+  projectOperator(actor, project, membership) {
+    if (actor.role === "owner") return true;
+    return Boolean(project?.protected && membership?.co_operator);
+  }
   async access(actor, project = "dasn", permission = "read") {
     const p = await this.project(project);
     const membership = await this.one(
-      "SELECT role FROM project_members WHERE project_id=? AND principal_id=? AND active=1",
+      "SELECT m.role,EXISTS(SELECT 1 FROM project_operators o WHERE o.project_id=m.project_id AND o.principal_id=m.principal_id) AS co_operator FROM project_members m WHERE m.project_id=? AND m.principal_id=? AND m.active=1",
       p.id,
       actor.id,
     );
     if (!membership) throw new Problem(403, "Join this project before accessing its work.");
     if (permission !== "read") {
-      if (p.protected) this.owner(actor);
-      else {
+      if (p.protected && !this.projectOperator(actor, p, membership)) {
+        throw new Problem(403, "Only a DASN operator or project co-operator can do that.");
+      } else {
         const rule = permission === "accept"
           ? p.acceptance
           : permission === "approve"
@@ -131,8 +136,11 @@ export class Store {
       throw e;
     }
   }
-  async invite(actor, project = "dasn") {
+  async invite(actor, project = "dasn", coOperator = false) {
     const p = await this.access(actor, project, "manage");
+    if (coOperator && !p.protected) {
+      throw new Problem(400, "Co-operator invitations are only available for protected DASN.");
+    }
     const token = secret(), id = uid(), now = this.now();
     await this.guardedBatch(actor, p, [
       this.stmt(
@@ -145,8 +153,14 @@ export class Store {
         now + 7 * 86400000,
       ),
       this.stmt("INSERT INTO project_invites(invite_id,project_id) VALUES (?,?)", id, p.id),
+      this.stmt(
+        "INSERT INTO project_invite_operators(invite_id,project_id,co_operator) VALUES (?,?,?)",
+        id,
+        p.id,
+        Number(coOperator),
+      ),
     ]);
-    return { id, token, expires_at: now + 7 * 86400000 };
+    return { id, token, expires_at: now + 7 * 86400000, co_operator: coOperator };
   }
   async join(token, name, requestId = uid(), project = "dasn") {
     str(token, "Invitation", 128);
@@ -156,11 +170,14 @@ export class Store {
     const session = await hash(`dasn-join-v1:${token}:${requestId}`);
     const requestHash = await hash(requestId);
     const invitation = await this.one(
-      "SELECT i.id FROM invites i JOIN project_invites pi ON pi.invite_id=i.id WHERE i.hash=? AND pi.project_id=?",
+      "SELECT i.id,i.role,COALESCE(io.co_operator,0) AS co_operator FROM invites i JOIN project_invites pi ON pi.invite_id=i.id LEFT JOIN project_invite_operators io ON io.invite_id=i.id AND io.project_id=pi.project_id WHERE i.hash=? AND pi.project_id=?",
       digest,
       project,
     );
     if (!invitation) throw new Problem(410, "This invitation does not belong to this project.");
+    if (invitation.co_operator && project !== "dasn") {
+      throw new Problem(410, "This co-operator invitation is not valid for this project.");
+    }
     const results = await this.db.batch([
       this.stmt(
         "INSERT INTO principals(id,name,role,created_at) SELECT ?,?,role,? FROM invites WHERE hash=? AND used_by IS NULL AND revoked=0 AND expires_at>?",
@@ -188,11 +205,20 @@ export class Store {
         id,
       ),
       this.stmt(
-        "INSERT INTO project_members(project_id,principal_id,role,joined_at) SELECT ?,id,CASE WHEN role='owner' AND ?='dasn' THEN 'maintainer' ELSE 'member' END,? FROM principals WHERE id=?",
+        "INSERT INTO project_members(project_id,principal_id,role,joined_at) SELECT ?,id,CASE WHEN ?=1 OR ?='owner' THEN 'maintainer' ELSE 'member' END,? FROM principals WHERE id=?",
         project,
-        project,
+        invitation.co_operator,
+        invitation.role,
         now,
         id,
+      ),
+      this.stmt(
+        "INSERT INTO project_operators(project_id,principal_id,created_at) SELECT ?,?,? WHERE changes()=1 AND (?=1 OR ?='owner')",
+        project,
+        id,
+        now,
+        invitation.co_operator,
+        invitation.role,
       ),
     ]);
     if (!results[0].meta.changes) {
@@ -291,18 +317,21 @@ export class Store {
       const response = { ok: true, project_id: id, version: creating ? 1 : p.version + 1 };
       const result = { project: id, entity: id, authorization: p, response, steps: [] };
       if (action === "set_project_member") {
-        if (p.protected) {
-          throw new Problem(
-            403,
-            "DASN project authority cannot be delegated through project settings.",
-          );
-        }
         const target = await this.one(
-          "SELECT * FROM project_members WHERE project_id=? AND principal_id=?",
+          "SELECT m.*,p.role AS principal_role,EXISTS(SELECT 1 FROM project_operators o WHERE o.project_id=m.project_id AND o.principal_id=m.principal_id) AS co_operator FROM project_members m JOIN principals p ON p.id=m.principal_id WHERE m.project_id=? AND m.principal_id=?",
           id,
           args.principal_id,
         );
         if (!target) throw new Problem(404, "No membership in this project.");
+        if (
+          p.protected && target.principal_id !== actor.id &&
+          (target.principal_role === "owner" || target.co_operator)
+        ) {
+          throw new Problem(
+            403,
+            "A protected DASN co-operator cannot change another co-operator's membership.",
+          );
+        }
         const remaining = await this.one(
           "SELECT count(*) AS n FROM project_members m JOIN principals u ON u.id=m.principal_id WHERE m.project_id=? AND m.role='maintainer' AND m.active=1 AND u.disabled=0 AND m.principal_id!=?",
           id,
@@ -486,7 +515,7 @@ export class Store {
     let invitation;
     if (p.joining === "invitation" || invitationCode) {
       invitation = await this.one(
-        "SELECT i.* FROM invites i JOIN project_invites pi ON pi.invite_id=i.id WHERE i.hash=? AND pi.project_id=? AND i.used_by IS NULL AND i.revoked=0 AND i.expires_at>? AND i.role='member'",
+        "SELECT i.*,COALESCE(io.co_operator,0) AS co_operator FROM invites i JOIN project_invites pi ON pi.invite_id=i.id LEFT JOIN project_invite_operators io ON io.invite_id=i.id AND io.project_id=pi.project_id WHERE i.hash=? AND pi.project_id=? AND i.used_by IS NULL AND i.revoked=0 AND i.expires_at>? AND i.role='member'",
         await hash(str(invitationCode, "Invitation", 128)),
         p.id,
         this.now(),
@@ -502,10 +531,18 @@ export class Store {
           this.now(),
         ),
         this.stmt(
-          "INSERT INTO project_members(project_id,principal_id,joined_at) SELECT ?,?,? WHERE changes()=1",
+          "INSERT INTO project_members(project_id,principal_id,role,joined_at) SELECT ?,?,CASE WHEN ?=1 THEN 'maintainer' ELSE 'member' END,? WHERE changes()=1",
+          p.id,
+          actor.id,
+          invitation.co_operator,
+          this.now(),
+        ),
+        this.stmt(
+          "INSERT INTO project_operators(project_id,principal_id,created_at) SELECT ?,?,? WHERE changes()=1 AND ?=1",
           p.id,
           actor.id,
           this.now(),
+          invitation.co_operator,
         ),
       ]
       : [
@@ -518,7 +555,7 @@ export class Store {
       ];
     const results = await this.guardedBatch(actor, p, steps, false);
     if (invitation && !results[0].meta.changes) throw new Problem(410, "Invitation already used.");
-    return { ok: true, project_code: p.code };
+    return { ok: true, project_code: p.code, co_operator: Boolean(invitation?.co_operator) };
   }
   async task(id, actor) {
     const task = await this.one(

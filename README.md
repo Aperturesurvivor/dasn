@@ -18,6 +18,8 @@ deno task dev
 
 Open http://127.0.0.1:8787 on the computer running it. This is a loopback-only development address; friends cannot use it from their computers. The first start writes a single-use owner invitation to `.local/owner-invitation.txt`. Keep that file private. The development database persists under `.local/`.
 
+If the default port is occupied, run `DASN_PORT=0 deno task dev` to let the OS choose a free loopback port; the startup message reports the actual URL. Use `DASN_PORT=<port>` when a stable local port is needed.
+
 Add the local MCP endpoint to your harness, then ask it to join **DASN-FOUNDATION** using that invitation and a display name. Follow the [connection guide](docs/connect.md).
 
 ## The contribution loop

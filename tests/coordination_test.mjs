@@ -7,7 +7,8 @@ import { handle } from "../src/worker.mjs";
 
 const schema = await Deno.readTextFile(new URL("../migrations/0001.sql", import.meta.url)) + "\n" +
   await Deno.readTextFile(new URL("../migrations/0002.sql", import.meta.url)) + "\n" +
-  await Deno.readTextFile(new URL("../migrations/0003.sql", import.meta.url));
+  await Deno.readTextFile(new URL("../migrations/0003.sql", import.meta.url)) + "\n" +
+  await Deno.readTextFile(new URL("../migrations/0004.sql", import.meta.url));
 
 Deno.test("joining can recover a lost response without creating another membership or reviving a revoked key", async () => {
   const db = new SqliteD1();
@@ -641,18 +642,14 @@ test("DASN's approval requirement cannot be weakened even by an operator configu
       }),
     403,
   );
-  await rejects(
-    () =>
-      projectCall(f, owner, "set_project_member", {
-        project_code: "DASN-FOUNDATION",
-        expected_version: 1,
-        idempotency_key: uid(),
-        principal_id: f.a.actor.id,
-        role: "maintainer",
-        active: true,
-      }),
-    403,
-  );
+  await projectCall(f, owner, "set_project_member", {
+    project_code: "DASN-FOUNDATION",
+    expected_version: 1,
+    idempotency_key: uid(),
+    principal_id: f.a.actor.id,
+    role: "maintainer",
+    active: true,
+  });
   await rejects(
     () =>
       projectCall(f, f.a, "create_project", {
@@ -667,6 +664,52 @@ test("DASN's approval requirement cannot be weakened even by an operator configu
   const settings = await f.store.project();
   assert.equal(settings.protected, 1);
   assert.equal(settings.acceptance, "maintainers");
+});
+
+test("protected project co-operator invitation grants project administration", async (f) => {
+  const owner = { key: f.ownerKey };
+  const invitation = await projectCall(f, owner, "create_invitation", {
+    project_code: "DASN-FOUNDATION",
+    co_operator: true,
+  });
+  assert.equal(invitation.co_operator, true);
+  const joined = await callTool(f.store, "join_project", {
+    project_code: "DASN-FOUNDATION",
+    invitation_code: invitation.token,
+    display_name: "Jason",
+    join_request_id: uid(),
+  });
+  const jason = { key: joined.member_key };
+  const members = await projectCall(f, jason, "list_members", {
+    project_code: "DASN-FOUNDATION",
+  });
+  assert.equal(members.members.find((m) => m.name === "Jason").co_operator, 1);
+  const current = await f.store.project();
+  await projectCall(f, jason, "configure_project", {
+    project_code: "DASN-FOUNDATION",
+    expected_version: current.version,
+    idempotency_key: uid(),
+    description: "Help build the commons together",
+  });
+  const memberInvite = await projectCall(f, jason, "create_invitation", {
+    project_code: "DASN-FOUNDATION",
+  });
+  assert.equal(memberInvite.co_operator, false);
+  const proposal = await projectCall(f, f.a, "propose_work", {
+    project_code: "DASN-FOUNDATION",
+    idempotency_key: uid(),
+    title: "Co-operator approval check",
+    description: "Verify shared administration",
+    criteria: "Co-operator can approve",
+    kind: "testing",
+    conflict_scope: "co-operator-test",
+  });
+  const task = await f.store.task(proposal.task_id, f.a.actor);
+  await projectCall(f, jason, "approve_work", {
+    task_id: task.id,
+    expected_version: task.version,
+    idempotency_key: uid(),
+  });
 });
 
 test("project invitation admits only that project and existing identities can join without new keys", async (f) => {

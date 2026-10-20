@@ -1,5 +1,9 @@
 # Friends-alpha release
 
+## Current release: project co-operators — 0.3.2
+
+Version 0.3.2 adds project-scoped co-operator invitations for protected DASN. A co-operator can administer project metadata within the protected rules, issue invitations, approve tasks, administer ordinary memberships and record reviewed acceptance decisions. The original operator remains the release authority for repository changes and deployment. GitHub permissions are separate from DASN membership and must be granted by the repository owner.
+
 The 0.3.0 shared workspace alpha is deployed at [DASN](https://dasn-friends.aperturesurvivor.workers.dev), with [MCP](https://dasn-friends.aperturesurvivor.workers.dev/mcp) on the same host. Its dedicated Worker and D1 database are named `dasn-friends`. Workers Free was verified in the signed-in dashboard before deployment on 2026-09-09.
 
 The current release exposes 51 MCP tools. Live shared-file edits/history, competing writes, identical retries, project-visible requests/replies, advisory voting and contribution submission without a task all passed against D1 using two explicitly labeled scripted test clients. Their credentials were revoked and the workspace fixture archived. Its synthetic submission was returned for changes to end the verification; no independent review or acceptance was fabricated. The existing real Cursor submission remains pending at task version 5, unchanged.
